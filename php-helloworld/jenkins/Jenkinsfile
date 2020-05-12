@@ -47,7 +47,7 @@ pipeline {
         stage('stage 3') {
             steps {
                 sh '''
-                   oc project $(DEV_PROJECT}
+                   oc project ${DEV_PROJECT}
                    oc new-app --name hello php:7~${APP_GIT_URL} --context-dir ${DIR_NAME}
 
                    oc expose svc/hello
