@@ -1,0 +1,59 @@
+pipeline {
+    options {
+        // set a timeout of 30 minutes for this pipeline
+        timeout(time: 30, unit: 'MINUTES')
+    }
+    agent {
+      node {
+        label 'master'
+      }
+    }
+
+    environment{
+    DEV_PROJECT = "hello-app"
+    APP_GIT_URL = "https://github.com/mohghannam/jenkins-demo"
+    DIR_NAME= "php-helloworld"
+
+    }
+
+    stages {
+
+        stage('stage 1') {
+            steps {
+                script {
+                    openshift.withCluster() {
+                        openshift.withProject() {
+                                echo "stage 1: using project: ${openshift.project()} in cluster ${openshift.cluster()}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('stage 2') {
+            steps {
+                sh 'install app dependencies!'
+            }
+        }
+
+        stage('manual approval') {
+            steps {
+                timeout(time: 60, unit: 'MINUTES') {
+                    input message: "dependencies downloaded.Move to stage 3?"
+                }
+            }
+        }
+
+        stage('stage 3') {
+            steps {
+                sh '''
+                   oc project $(DEV_PROJECT}
+                   oc new-app --name hello php:7~${APP_GIT_URL} --context-dir ${DIR_NAME}
+
+                   oc expose svc/hello
+                   '''
+            }
+        }
+
+    }
+}
