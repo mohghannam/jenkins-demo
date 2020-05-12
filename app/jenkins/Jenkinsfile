@@ -1,98 +1,43 @@
 pipeline {
     options {
-        // set a timeout of 60 minutes for this pipeline
-        timeout(time: 60, unit: 'MINUTES')
+        // set a timeout of 30 minutes for this pipeline
+        timeout(time: 30, unit: 'MINUTES')
     }
     agent {
       node {
-        label 'nodejs'
+       label 'master' 
       }
     }
 
-    environment {
-        DEV_PROJECT = "jenkins-demo"
-        APP_GIT_URL = "https://github.com/mohghannam/jenkins-demo"
-        NEXUS_SERVER = "http://nexus-common.apps.cluster.domain.example.com/repository/nodejs"
-
-        // DO NOT CHANGE THE GLOBAL VARS BELOW THIS LINE
-        APP_NAME = "hello"
-    }
-
-
     stages {
 
-        stage('NPM Install') {
-            steps {
-                echo '### Installing NPM dependencies ###'
-                sh '''
-                        npm config set registry ${NEXUS_SERVER}
-                        cd app
-                        npm install
-                   '''
-            }
-        }
-
-        stage('Run Unit Tests') {
-            steps {
-                echo '### Running unit tests ###'
-                sh 'cd app; npm test'
-            }
-        }
-
-        stage('Run Linting Tools') {
-            steps {
-                echo '### Running eslint on code ###'
-                sh 'cd app; npm run lint'
-            }
-        }
-
-        stage('Launch new app in DEV env') {
-            steps {
-                echo '### Cleaning existing resources in DEV env ###'
-                sh '''
-                        oc project ${DEV_PROJECT}
-                        oc delete all -l app=${APP_NAME}
-                        sleep 5
-                   '''
-
-                echo '### Creating a new app in DEV env ###'
-                sh '''
-                        oc project ${DEV_PROJECT}
-                        oc new-app --name books nodejs:8~${APP_GIT_URL} --build-env npm_config_registry=${NEXUS_SERVER} --context-dir ${APP_NAME}
-                        oc expose svc/${APP_NAME}
-                   '''
-            }
-        }
-
-        stage('Wait for S2I build to complete') {
+        stage('stage 1') {
             steps {
                 script {
                     openshift.withCluster() {
-                        openshift.withProject( "${DEV_PROJECT}" ) {
-                            def bc = openshift.selector("bc", "${APP_NAME}")
-                            bc.logs('-f')
-                            def builds = bc.related('builds')
-                            builds.untilEach(1) {
-                                return (it.object().status.phase == "Complete")
-                            }
+                        openshift.withProject() {
+                                echo "stage 1: using project: ${openshift.project()} in cluster ${openshift.cluster()}"
                         }
                     }
                 }
             }
         }
 
-        stage('Wait for deployment in DEV env') {
+        stage('stage 2'){
             steps {
-                script {
-                    openshift.withCluster() {
-                        openshift.withProject( "${DEV_PROJECT}" ) {
-                            def deployment = openshift.selector("dc", "${APP_NAME}").rollout()
-                            openshift.selector("dc", "${APP_NAME}").related('pods').untilEach(1) {
-                                return (it.object().status.phase == "Running")
-                            }
-                        }
-                    }
-                }
+               sh 'echo running build tests'
+            }
+        }
+
+        stage('stage 3') {
+            steps {
+              input message: "tests complete, move to next stage?"
+            }
+        }
+
+        stage('stage 3') {
+            steps {
+                sh 'echo hello from stage 3!. This is the last stage...'
             }
         }
 
