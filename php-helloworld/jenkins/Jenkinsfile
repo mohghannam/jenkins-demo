@@ -32,7 +32,7 @@ pipeline {
 
         stage('stage 2') {
             steps {
-                sh 'install app dependencies!'
+                sh ' echo install app dependencies!'
             }
         }
 
